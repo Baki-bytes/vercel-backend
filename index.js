@@ -15,19 +15,36 @@ const { notFound, errorHandler } = require("./middlewares/errorMiddlewares.js");
 dotenv.config();
 app.use(express.json());
 
-const allowedOrigins = (
-  process.env.CORS_ORIGIN ||
-  "http://localhost:5173"
-)
+const allowedOrigins = (process.env.CORS_ORIGIN || "")
   .split(",")
-  .map((origin) => origin.trim());
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-  })
-);
+const isVercelFrontend = (origin) => /^https:\/\/.*\.vercel\.app$/.test(origin);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (
+      origin === "http://localhost:5173" ||
+      allowedOrigins.includes(origin) ||
+      isVercelFrontend(origin)
+    ) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 /* ================= DATABASE ================= */
 mongoose
@@ -49,7 +66,7 @@ if (process.env.VERCEL !== "1") {
   const io = new Server(server, {
     pingTimeout: 60000,
     cors: {
-      origin: allowedOrigins,
+      origin: allowedOrigins.length ? allowedOrigins : ["http://localhost:5173"],
       methods: ["GET", "POST"],
     },
   });
