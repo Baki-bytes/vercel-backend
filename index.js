@@ -14,6 +14,7 @@ const { notFound, errorHandler } = require("./middlewares/errorMiddlewares.js");
 
 dotenv.config();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 const allowedOrigins = (process.env.CORS_ORIGIN || "")
   .split(",")
